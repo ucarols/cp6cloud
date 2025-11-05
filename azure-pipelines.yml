@@ -6,9 +6,9 @@ pool:
 
 variables:
   GRADLE_CACHE_FOLDER: $(Pipeline.Workspace)/.gradle/caches
-  azureSubscription: "b633537a-1cd0-44f4-a6aa-c98da4fa9652" # Service Connection do Azure (App Service)
-  containerRegistry: "connectionacr"                        # Nome da Service Connection do ACR
-  acrLoginServer: "2tds251cp6559123.azurecr.io"             # URL correta do ACR
+  azureSubscription: "b633537a-1cd0-44f4-a6aa-c98da4fa9652" 
+  containerRegistry: "connectionacr"                        
+  acrLoginServer: "2tds251cp6559123.azurecr.io"             
   repositoryName: "transactionapi"
   webAppName: "2tds251cp6559123"
   resourceGroup: "rg-cp6-2tds"
