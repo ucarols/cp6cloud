@@ -6,8 +6,8 @@ pool:
 
 variables:
   GRADLE_CACHE_FOLDER: $(Pipeline.Workspace)/.gradle/caches
-  azureSubscription: "b633537a-1cd0-44f4-a6aa-c98da4fa9652"
-  containerRegistry: "connectionacr"        # Nome do service connection do ACR
+  azureSubscription: "b633537a-1cd0-44f4-a6aa-c98da4fa9652" # Service Connection da sua amiga
+  containerRegistry: "connectionacr"        # Nome do Service Connection do ACR
   acrLoginServer: "connectionacr.azurecr.io" # URL do ACR
   repositoryName: "transactionapi"
   webAppName: "2tds251cp6559123"
@@ -41,11 +41,20 @@ stages:
               publishJUnitResults: false
               tasks: 'clean build'
 
+          # Login no ACR antes de build/push
           - task: Docker@2
+            displayName: "Login no ACR"
             inputs:
+              command: login
+              containerRegistry: $(containerRegistry)
+
+          # Build e push da imagem
+          - task: Docker@2
+            displayName: "Build e Push Docker"
+            inputs:
+              command: buildAndPush
               containerRegistry: $(containerRegistry)
               repository: $(repositoryName)
-              command: 'buildAndPush'
               Dockerfile: '**/Dockerfile'
               tags: |
                 latest
@@ -61,8 +70,9 @@ stages:
             deploy:
               steps:
                 - task: AzureWebAppContainer@1
+                  displayName: "Deploy no Web App"
                   inputs:
                     azureSubscription: $(azureSubscription)
                     appName: $(webAppName)
                     imageName: "$(acrLoginServer)/$(repositoryName):latest"
-                    containerRegistry: $(containerRegistry)
+                    containerRegistry: "$(containerRegistry)"
