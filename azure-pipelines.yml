@@ -14,7 +14,6 @@ variables:
   resourceGroup: "rg-cp6-2tds"
   location: "brazilsouth"
 
-
 stages:
   - stage: Build
     displayName: "Build stage"
@@ -22,6 +21,9 @@ stages:
       - job: Gradle_Build
         displayName: "Gradle Package"
         steps:
+          - script: mkdir -p $(GRADLE_CACHE_FOLDER)
+            displayName: "Criar pasta de cache do Gradle"
+
           - task: Cache@2
             inputs:
               key: 'gradle | "$(Agent.OS)" | **/build.gradle.kts'
