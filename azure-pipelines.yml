@@ -7,7 +7,8 @@ pool:
 variables:
   GRADLE_CACHE_FOLDER: $(Pipeline.Workspace)/.gradle/caches
   azureSubscription: "b633537a-1cd0-44f4-a6aa-c98da4fa9652"
-  containerRegistry: "connectionacr"
+  containerRegistry: "connectionacr"        # Nome do service connection do ACR
+  acrLoginServer: "connectionacr.azurecr.io" # URL do ACR
   repositoryName: "transactionapi"
   webAppName: "2tds251cp6559123"
   aciName: "2tdscp6559123acr"
@@ -48,6 +49,8 @@ stages:
               Dockerfile: '**/Dockerfile'
               tags: |
                 latest
+              # Para garantir que vai enviar para o ACR
+              loginServer: $(acrLoginServer)
 
   - stage: Deploy
     displayName: "Deploy stage"
@@ -63,5 +66,5 @@ stages:
                   inputs:
                     azureSubscription: $(azureSubscription)
                     appName: $(webAppName)
-                    imageName: "$(repositoryName):latest"
+                    imageName: "$(acrLoginServer)/$(repositoryName):latest"
                     containerRegistry: "$(containerRegistry)"
