@@ -49,8 +49,6 @@ stages:
               Dockerfile: '**/Dockerfile'
               tags: |
                 latest
-              # Para garantir que vai enviar para o ACR
-              loginServer: $(acrLoginServer)
 
   - stage: Deploy
     displayName: "Deploy stage"
@@ -67,4 +65,4 @@ stages:
                     azureSubscription: $(azureSubscription)
                     appName: $(webAppName)
                     imageName: "$(acrLoginServer)/$(repositoryName):latest"
-                    containerRegistry: "$(containerRegistry)"
+                    containerRegistry: $(containerRegistry)
