@@ -33,6 +33,7 @@ dependencies {
 
     // Flyway e SQL Server
     implementation("org.flywaydb:flyway-core")
+    implementation("org.flywaydb:flyway-sqlserver")
     implementation("com.microsoft.sqlserver:mssql-jdbc")
 
     // DevTools (opcional para desenvolvimento)
