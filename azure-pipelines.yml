@@ -127,4 +127,4 @@ stages:
                   inputs:
                     azureSubscription: $(azureSubscription)
                     appName: $(webAppName)
-                    containers: "$(containerRegistry).azurecr.io/$(repositoryName):latest"
+                    containers: "2tds251cp6559123.azurecr.io/$(repositoryName):latest"
