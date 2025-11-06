@@ -2,28 +2,28 @@ trigger:
   - main
 
 pool:
-  vmImage: 'ubuntu-latest'
+  vmImage: ubuntu-latest
 
 variables:
   GRADLE_CACHE_FOLDER: $(Pipeline.Workspace)/.gradle/caches
-  azureSubscription: "b633537a-1cd0-44f4-a6aa-c98da4fa9652" 
-  containerRegistry: "connectionacr"                        
-  acrLoginServer: "2tds251cp6559123.azurecr.io"             
+
+  azureSubscription: "b633537a-1cd0-44f4-a6aa-c98da4fa9652"
+
+  containerRegistry: "connectionacr"
   repositoryName: "transactionapi"
+
   webAppName: "2tds251cp6559123"
+  aciName: "2tdscp6559123acr"
   resourceGroup: "rg-cp6-2tds"
   location: "brazilsouth"
 
 stages:
   - stage: Build
-    displayName: "Build Stage"
+    displayName: "Build stage"
     jobs:
       - job: Gradle_Build
-        displayName: "Build do Projeto com Gradle"
+        displayName: "Gradle Package"
         steps:
-          - script: mkdir -p $(GRADLE_CACHE_FOLDER)
-            displayName: "Criar pasta de cache do Gradle"
-
           - task: Cache@2
             inputs:
               key: 'gradle | "$(Agent.OS)" | **/build.gradle.kts'
@@ -31,49 +31,100 @@ stages:
                 gradle | "$(Agent.OS)"
                 gradle
               path: $(GRADLE_CACHE_FOLDER)
-            displayName: "Restaurar cache do Gradle"
+            displayName: "Cache Gradle local cache"
+
+          - script: chmod +x gradlew
+            displayName: "Give gradlew execute permission"
 
           - task: Gradle@3
+            displayName: "Gradle Build"
             inputs:
-              workingDirectory: ''
-              gradleWrapperFile: 'gradlew'
-              gradleOptions: '-Xmx3072m'
-              publishJUnitResults: false
-              tasks: 'clean build'
-            displayName: "Executar build com Gradle"
+              gradleWrapperFile: "gradlew"
+              tasks: "clean build -x test"
+              publishJUnitResults: true
+              testResultsFiles: "**/build/test-results/test/*.xml"
 
-          # Login no ACR
+          - task: CopyFiles@2
+            displayName: "Copy JAR to staging"
+            inputs:
+              SourceFolder: "$(System.DefaultWorkingDirectory)"
+              Contents: "**/build/libs/*.jar"
+              TargetFolder: "$(Build.ArtifactStagingDirectory)"
+
+          - publish: $(Build.ArtifactStagingDirectory)
+            artifact: drop
+
+
+  - stage: Docker
+    displayName: "Build and Push Docker Image"
+    dependsOn: Build
+    condition: succeeded()
+    jobs:
+      - job: Docker_Build_Push
+        displayName: "Build and Push Image to ACR"
+        pool:
+          vmImage: ubuntu-latest
+        steps:
           - task: Docker@2
-            displayName: "Login no Azure Container Registry"
             inputs:
               command: login
               containerRegistry: $(containerRegistry)
 
-          # Build e Push da imagem
           - task: Docker@2
-            displayName: "Build e Push da imagem Docker"
+            displayName: "Build and Push"
             inputs:
               command: buildAndPush
-              containerRegistry: $(containerRegistry)
               repository: $(repositoryName)
-              Dockerfile: '**/Dockerfile'
+              containerRegistry: $(containerRegistry)
+              dockerfile: "**/Dockerfile"
               tags: |
                 latest
+                $(Build.BuildId)
+
 
   - stage: Deploy
-    displayName: "Deploy Stage"
-    dependsOn: Build
+    displayName: "Deploy to Azure"
+    dependsOn: Docker
+    condition: succeeded()
     jobs:
-      - deployment: DeployWebApp
-        displayName: "Deploy no Azure Web App"
-        environment: "production"
+      - job: Deploy_ACI
+        displayName: "Deploy to Azure Container Instance"
+        steps:
+          - task: AzureCLI@2
+            displayName: "Deploy ACI"
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az container create -g $(resourceGroup) \
+                  -n $(aciName) \
+                  --image 2tds251cp6559123.azurecr.io/$(repositoryName):latest \
+                  --ports 8080 \
+                  --cpu 1 \
+                  --memory 2 \
+                  --os-type Linux \
+                  --ip-address Public \
+                  --registry-login-server 2tds251cp6559123.azurecr.io \
+                  --registry-username $(ACR_USERNAME) \
+                  --registry-password $(ACR_PASSWORD) \
+                  --location $(location) \
+                  --restart-policy Always \
+                  --environment-variables \
+                    DB_URL=$(DB_URL) \
+                    DB_USERNAME=$(DB_USERNAME) \
+                    DB_PASSWORD=$(DB_PASSWORD)
+
+      - deployment: Deploy_WebApp
+        displayName: "Deploy Web App from Container"
+        environment: Production
         strategy:
           runOnce:
             deploy:
               steps:
                 - task: AzureWebAppContainer@1
-                  displayName: "Publicar no Azure Web App"
+                  displayName: "Azure Web App on Container Deploy"
                   inputs:
                     azureSubscription: $(azureSubscription)
                     appName: $(webAppName)
-                    imageName: "$(acrLoginServer)/$(repositoryName):latest"
+                    containers: "$(containerRegistry).azurecr.io/$(repositoryName):latest"
