@@ -7,9 +7,9 @@ pool:
 variables:
   GRADLE_CACHE_FOLDER: $(Pipeline.Workspace)/.gradle/caches
 
-  azureSubscription: "b633537a-1cd0-44f4-a6aa-c98da4fa9652"
+  azureSubscription: "98d06f79-63bf-483e-a9f9-db68f5f76a0e"
 
-  containerRegistry: "connectionacr"
+  containerRegistry: "cp6acrconnection"
   repositoryName: "transactionapi"
 
   webAppName: "2tds251cp6559123"
